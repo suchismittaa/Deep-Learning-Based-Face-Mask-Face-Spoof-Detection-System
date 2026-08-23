@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Sentinel Vision — an interactive case study for a ResNet18 + MTCNN face mask and spoof detection system.">
+<title>Sentinel Vision — Face Mask &amp; Spoof Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0d10;
+  --bg-glow:#0f1f1c;
+  --panel:#12161b;
+  --panel-2:#161b21;
+  --line:#232b33;
+  --line-soft:#1a2028;
+  --text:#eef2f4;
+  --muted:#8b99a5;
+  --muted-2:#5f6d78;
+  --cyan:#5eead4;
+  --cyan-dim:#2f6e64;
+  --amber:#f2a65a;
+  --red:#ef5b6b;
+  --max:1180px;
+  --font-display:'Space Grotesk',ui-sans-serif,system-ui,sans-serif;
+  --font-body:'Inter',ui-sans-serif,system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse 900px 500px at 82% -5%, var(--bg-glow) 0%, transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+img,svg{display:block;max-width:100%}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:var(--font-display);letter-spacing:-.02em;margin:0}
+p{margin:0}
+.mono{font-family:var(--font-mono)}
+.eyebrow{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--cyan);
+  font-weight:600;
+}
+.section{padding:96px 0}
+.section-head{max-width:640px;margin-bottom:48px}
+.section-head h2{font-size:clamp(28px,4vw,40px);margin-top:12px}
+.section-head .eyebrow + h2{margin-top:12px}
+.section-sub{color:var(--muted);font-size:16px;margin-top:14px;max-width:560px}
+.divider{border:none;border-top:1px solid var(--line-soft);margin:0}
+
+/* Skip link / accessibility */
+.skip-link{
+  position:absolute;left:-9999px;top:0;background:var(--cyan);color:#04120f;
+  padding:10px 16px;border-radius:0 0 8px 0;font-family:var(--font-mono);font-size:13px;z-index:100;
+}
+.skip-link:focus{left:0}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
+
+/* Nav */
+.nav{position:sticky;top:0;z-index:30;background:rgba(10,13,16,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-soft)}
+.nav-in{height:66px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:.01em;white-space:nowrap}
+.brand-dot{width:9px;height:9px;border-radius:2px;background:var(--cyan);box-shadow:0 0 12px var(--cyan);flex:none}
+.nav-links{display:flex;gap:26px;font-family:var(--font-mono);font-size:12.5px;color:var(--muted)}
+.nav-links a{text-decoration:none}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{display:flex;gap:10px}
+@media (max-width:860px){.nav-links{display:none}}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--line);padding:12px 18px;border-radius:8px;
+  font-family:var(--font-mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;
+  text-decoration:none;text-transform:uppercase;cursor:pointer;background:transparent;color:var(--text);
+  transition:border-color .15s ease, transform .1s ease;
+}
+.btn:hover{border-color:var(--cyan)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--cyan);color:#04120f;border-color:var(--cyan);font-weight:600}
+.btn-primary:hover{background:#7ff0dd}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* Hero */
+.hero{padding:72px 0 40px;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.hero h1{font-size:clamp(38px,6vw,64px);line-height:1.04;margin:16px 0 20px;max-width:640px}
+.hero-copy{color:var(--muted);font-size:17px;max-width:520px}
+.hero-btns{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
+
+/* Hero scanner visual */
+.scanner{
+  position:relative;height:420px;border:1px solid var(--line);border-radius:14px;
+  background:linear-gradient(160deg,#0d1216,#090b0d);overflow:hidden;
+}
+.scanner-grid{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(94,234,212,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(94,234,212,.06) 1px,transparent 1px);
+  background-size:28px 28px;
+  mask-image:radial-gradient(ellipse at center, black 40%, transparent 78%);
+}
+.scanner-corners span{position:absolute;width:22px;height:22px;border-color:var(--cyan);opacity:.55}
+.scanner-corners span:nth-child(1){top:16px;left:16px;border-top:2px solid;border-left:2px solid}
+.scanner-corners span:nth-child(2){top:16px;right:16px;border-top:2px solid;border-right:2px solid}
+.scanner-corners span:nth-child(3){bottom:16px;left:16px;border-bottom:2px solid;border-left:2px solid}
+.scanner-corners span:nth-child(4){bottom:16px;right:16px;border-bottom:2px solid;border-right:2px solid}
+.face-frame{
+  position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  width:172px;height:220px;border:1.5px solid rgba(94,234,212,.7);border-radius:46% 46% 42% 42%;
+}
+.face-frame i{position:absolute;width:5px;height:5px;background:var(--cyan);border-radius:50%;box-shadow:0 0 6px var(--cyan)}
+.face-frame i:nth-child(1){top:72px;left:38px}
+.face-frame i:nth-child(2){top:72px;right:38px}
+.face-frame i:nth-child(3){top:112px;left:50%;transform:translateX(-50%)}
+.face-frame i:nth-child(4){top:150px;left:50%;transform:translateX(-50%);width:44px;height:2px;border-radius:2px;background:rgba(94,234,212,.5);box-shadow:none}
+.scanline{
+  position:absolute;left:10%;right:10%;height:1.5px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  box-shadow:0 0 16px var(--cyan);
+  animation:scan 3.2s ease-in-out infinite;
+}
+@keyframes scan{0%,100%{top:20%}50%{top:74%}}
+.readout{
+  position:absolute;left:16px;right:16px;bottom:16px;
+  display:flex;align-items:center;justify-content:space-between;
+  border:1px solid var(--line);background:rgba(9,11,13,.7);border-radius:8px;
+  padding:11px 14px;font-family:var(--font-mono);font-size:11.5px;color:var(--muted);
+}
+.readout b{color:var(--cyan);font-weight:600}
+.readout .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block;margin-right:7px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.scanline{animation:none;top:45%}.readout .dot{animation:none}}
+
+@media (max-width:960px){.hero{grid-template-columns:1fr;gap:36px}.scanner{height:300px}}
+
+/* Class cards */
+.class-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.class-card{border:1px solid var(--line);border-radius:12px;padding:26px;background:var(--panel)}
+.class-card .tag{
+  display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:5px;border:1px solid var(--line);
+}
+.class-card.real .tag{color:var(--cyan);border-color:var(--cyan-dim)}
+.class-card.spoof .tag{color:var(--red);border-color:#5a2a30}
+.class-card.masked .tag{color:var(--amber);border-color:#6b4a26}
+.class-card h3{font-size:20px;margin:16px 0 8px}
+.class-card p{color:var(--muted);font-size:14.5px}
+.class-card .looks-for{margin-top:16px;padding-top:16px;border-top:1px solid var(--line-soft);font-size:13px;color:var(--muted-2)}
+.class-card .looks-for b{color:var(--muted);font-weight:600;display:block;margin-bottom:4px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+@media (max-width:800px){.class-grid{grid-template-columns:1fr}}
+
+/* Demo */
+.demo-panel{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;min-height:420px}
+.demo-upload{padding:32px;border-right:1px solid var(--line-soft);display:flex;flex-direction:column}
+.dropzone{
+  flex:1;border:1.5px dashed var(--line);border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  padding:24px;text-align:center;cursor:pointer;background:var(--panel-2);
+  transition:border-color .15s ease, background .15s ease;min-height:220px;
+}
+.dropzone:hover,.dropzone.drag{border-color:var(--cyan);background:rgba(94,234,212,.04)}
+.dropzone svg{color:var(--muted)}
+.dropzone .dz-title{font-weight:600;font-size:14.5px}
+.dropzone .dz-sub{color:var(--muted-2);font-size:12.5px;font-family:var(--font-mono)}
+.dropzone img{max-height:210px;border-radius:8px;object-fit:contain}
+#fileInput{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.api-row{display:flex;gap:8px;margin-top:16px;align-items:center}
+.api-row label{font-family:var(--font-mono);font-size:11px;color:var(--muted-2);white-space:nowrap}
+.api-row input{
+  flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+  padding:9px 11px;border-radius:6px;font-family:var(--font-mono);font-size:12px;
+}
+.api-row input:focus-visible{outline:2px solid var(--cyan)}
+.demo-actions{display:flex;gap:10px;margin-top:16px}
+
+.demo-result{padding:32px;display:flex;flex-direction:column;gap:18px}
+.pipeline-steps{display:flex;flex-direction:column;gap:0}
+.pstep{display:flex;align-items:center;gap:12px;padding:8px 0;font-family:var(--font-mono);font-size:12.5px;color:var(--muted-2)}
+.pstep .dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--line);flex:none}
+.pstep.active{color:var(--text)}
+.pstep.active .dot{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.pstep.done .dot{background:var(--cyan-dim);border-color:var(--cyan-dim)}
+
+.result-empty{color:var(--muted-2);font-size:13.5px;font-family:var(--font-mono);text-align:center;margin:auto;padding:24px}
+.result-card{display:none}
+.result-card.show{display:block}
+.result-verdict{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line-soft)}
+.result-verdict .label{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--muted-2);text-transform:uppercase}
+.result-verdict .value{font-family:var(--font-display);font-size:30px;font-weight:700;margin-top:4px}
+.result-verdict.real .value{color:var(--cyan)}
+.result-verdict.spoof .value{color:var(--red)}
+.result-verdict.masked .value{color:var(--amber)}
+.result-verdict .conf{font-family:var(--font-mono);font-size:20px;color:var(--muted)}
+.prob-rows{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+.prob-row{display:grid;grid-template-columns:70px 1fr 52px;align-items:center;gap:10px;font-family:var(--font-mono);font-size:12px}
+.prob-row .plabel{text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
+.prob-track{height:8px;background:var(--panel-2);border-radius:5px;overflow:hidden;border:1px solid var(--line-soft)}
+.prob-fill{height:100%;width:0%;background:var(--cyan);border-radius:5px;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.prob-fill.spoof{background:var(--red)}
+.prob-fill.masked{background:var(--amber)}
+.prob-row .pval{text-align:right;color:var(--muted)}
+.result-error{
+  border:1px solid #5a2a30;background:rgba(239,91,107,.06);color:#f0aab3;
+  border-radius:8px;padding:14px 16px;font-size:13.5px;
+}
+@media (max-width:900px){.demo-grid{grid-template-columns:1fr}.demo-upload{border-right:none;border-bottom:1px solid var(--line-soft)}}
+
+/* Pipeline steps expandable */
+.flow{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.flow-item{border-bottom:1px solid var(--line-soft)}
+.flow-item:last-child{border-bottom:none}
+.flow-btn{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  background:var(--panel);border:none;color:var(--text);padding:18px 22px;cursor:pointer;text-align:left;
+  font-family:var(--font-body);font-size:15px;font-weight:600;
+}
+.flow-btn .fnum{font-family:var(--font-mono);color:var(--cyan);font-size:12px;margin-right:12px}
+.flow-btn .chev{color:var(--muted-2);transition:transform .18s ease;flex:none}
+.flow-item.open .chev{transform:rotate(45deg)}
+.flow-panel{max-height:0;overflow:hidden;transition:max-height .22s ease}
+.flow-item.open .flow-panel{max-height:200px}
+.flow-panel p{padding:0 22px 20px 22px;color:var(--muted);font-size:14px;max-width:640px}
+
+/* Two-col explainer */
+.explain{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.explain h3{font-size:22px;margin-bottom:12px}
+.explain p{color:var(--muted);font-size:15px;margin-bottom:12px}
+.explain ol,.explain ul{color:var(--muted);font-size:14.5px;padding-left:20px;margin:0}
+.explain li{margin-bottom:6px}
+.diagram{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:26px;display:flex;flex-direction:column;align-items:center;gap:0;font-family:var(--font-mono);font-size:12.5px}
+.dblock{border:1px solid var(--line);background:var(--panel-2);border-radius:7px;padding:10px 16px;width:100%;text-align:center;color:var(--text)}
+.dblock.accent{border-color:var(--cyan-dim);color:var(--cyan)}
+.darrow{color:var(--muted-2);padding:5px 0;font-size:14px}
+@media (max-width:860px){.explain{grid-template-columns:1fr}}
+
+/* Table-style spec rows */
+.spec-table{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.spec-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line-soft)}
+.spec-row:last-child{border-bottom:none}
+.spec-row .k{padding:14px 18px;font-family:var(--font-mono);font-size:12px;color:var(--muted-2);background:var(--panel);text-transform:uppercase;letter-spacing:.05em}
+.spec-row .v{padding:14px 18px;background:var(--panel);font-size:14px;color:var(--text)}
+@media (max-width:640px){.spec-row{grid-template-columns:1fr}.spec-row .k{border-bottom:1px solid var(--line-soft)}}
+
+/* Data pipeline */
+.data-flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12.5px;margin-top:8px}
+.data-flow .db{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:9px 14px}
+.data-flow .arrow{color:var(--muted-2)}
+.split-bar{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin-top:18px}
+.split-bar div{display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11.5px;color:#04120f;font-weight:600}
+.split-bar .tr{width:70%;background:var(--cyan)}
+.split-bar .va{width:15%;background:var(--amber)}
+.split-bar .te{width:15%;background:#c9d3d9;color:#0a0d10}
+
+/* Eval placeholder */
+.eval-empty{
+  border:1px dashed var(--line);border-radius:12px;padding:40px 28px;text-align:center;
+  color:var(--muted);background:var(--panel);
+}
+.eval-empty .mono{color:var(--cyan);display:block;margin-top:10px;font-size:13px}
+
+/* Callout / why it matters */
+.callout{border-left:2px solid var(--cyan);padding:4px 0 4px 22px;color:var(--muted);font-size:15.5px;max-width:760px}
+
+/* Limitations */
+.limit-list{display:grid;grid-template-columns:1fr 1fr;gap:14px 32px;list-style:none;margin:0;padding:0}
+.limit-list li{display:flex;gap:12px;color:var(--muted);font-size:14.5px;padding:14px 0;border-bottom:1px solid var(--line-soft)}
+.limit-list li b{color:var(--red);flex:none;font-family:var(--font-mono);font-size:12px}
+@media (max-width:760px){.limit-list{grid-template-columns:1fr}}
+
+/* API code block */
+.code-block{
+  border:1px solid var(--line);border-radius:10px;background:#0b0e11;padding:20px 22px;
+  font-family:var(--font-mono);font-size:12.8px;color:#c7d3da;overflow-x:auto;
+}
+.code-block .c1{color:var(--muted-2)}
+.code-block .c2{color:var(--cyan)}
+.example-badge{
+  display:inline-block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted-2);border:1px solid var(--line);border-radius:5px;padding:3px 8px;margin-bottom:10px;
+}
+
+footer{border-top:1px solid var(--line-soft);padding:36px 0;color:var(--muted-2);font-size:13px;font-family:var(--font-mono)}
+footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#demo">Skip to live demo</a>
+
+<nav class="nav" aria-label="Primary">
+  <div class="wrap nav-in">
+    <div class="brand"><span class="brand-dot" aria-hidden="true"></span>SENTINEL VISION</div>
+    <div class="nav-links">
+      <a href="#classes">Classes</a>
+      <a href="#demo">Demo</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#data">Data</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#limitations">Limitations</a>
+      <a href="#api">API</a>
+    </div>
+    <div class="nav-cta"><a class="btn btn-primary" href="#demo">Test the Model</a></div>
+  </div>
+</nav>
+
+<header class="wrap hero">
+  <div>
+    <p class="eyebrow">COMPUTER VISION / BIOMETRIC SECURITY</p>
+    <h1>CAN A CAMERA TELL IF A FACE IS REAL?</h1>
+    <p class="hero-copy">A deep learning system combining face detection and image classification to distinguish genuine faces, spoofing attempts, and masked faces — built on MTCNN and a fine-tuned ResNet18, served through a FastAPI inference endpoint.</p>
+    <div class="hero-btns">
+      <a class="btn btn-primary" href="#demo">Test the Model</a>
+      <a class="btn" href="#pipeline">Explore the Pipeline</a>
+    </div>
+  </div>
+  <div class="scanner" role="img" aria-label="Animated illustration of a face-detection scan interface">
+    <div class="scanner-grid" aria-hidden="true"></div>
+    <div class="scanner-corners" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div class="face-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="scanline" aria-hidden="true"></div>
+    <div class="readout mono">
+      <span><span class="dot" aria-hidden="true"></span>STAGE: <b id="heroStage">FACE DETECTED</b></span>
+      <span id="heroConfidence">CONF 0.00</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="section" id="classes">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Output Space</p>
+      <h2>Three classes, one decision</h2>
+      <p class="section-sub">Every prediction resolves to exactly one of these three labels. The model does not attempt to identify who the person is — only which of these categories the face belongs to.</p>
+    </div>
+    <div class="class-grid">
+      <div class="class-card real">
+        <span class="tag">Real</span>
+        <h3>Genuine live face</h3>
+        <p>A face captured directly from a live subject in front of the camera — no intermediate surface, no reproduction.</p>
+        <div class="looks-for"><b>Classification label</b>real</div>
+      </div>
+      <div class="class-card spoof">
+        <span class="tag">Spoof</span>
+        <h3>Presentation attack</h3>
+        <p>A face presented through an intermediate medium — a printed photo, or a phone or laptop screen held up to the camera — rather than a live person.</p>
+        <div class="looks-for"><b>Classification label</b>spoof</div>
+      </div>
+      <div class="class-card masked">
+        <span class="tag">Masked</span>
+        <h3>Face with a mask</h3>
+        <p>A live face that is partially covered by a mask, distinct from both an unmasked real face and a spoof attempt.</p>
+        <div class="looks-for"><b>Classification label</b>masked</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="demo">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Live Inference</p>
+      <h2>Run a face check</h2>
+      <p class="section-sub">Upload an image and this page sends it to your running FastAPI instance. The result below is whatever the API actually returns — nothing here is precomputed or hardcoded.</p>
+    </div>
+
+    <div class="demo-panel">
+      <div class="demo-grid">
+        <div class="demo-upload">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload an image, or press Enter to choose a file">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+            <span class="dz-title">Drop an image, or click to choose one</span>
+            <span class="dz-sub">JPG or PNG · a single face works best</span>
+          </div>
+          <input id="fileInput" type="file" accept="image/*" aria-hidden="true">
+
+          <div class="api-row">
+            <label for="apiBase">API base URL</label>
+            <input id="apiBase" type="text" value="http://127.0.0.1:8000" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="demo-actions">
+            <button class="btn btn-primary" id="runBtn" disabled>Run Face Check</button>
+            <button class="btn" id="resetBtn">Reset</button>
+          </div>
+        </div>
+
+        <div class="demo-result">
+          <div class="pipeline-steps" id="pipelineSteps" aria-live="polite">
+            <div class="pstep" data-step="0"><span class="dot"></span>Image received</div>
+            <div class="pstep" data-step="1"><span class="dot"></span>Face detection (MTCNN)</div>
+            <div class="pstep" data-step="2"><span class="dot"></span>Face cropping</div>
+            <div class="pstep" data-step="3"><span class="dot"></span>ResNet18 inference</div>
+            <div class="pstep" data-step="4"><span class="dot"></span>Classification</div>
+          </div>
+
+          <div id="resultEmpty" class="result-empty">Upload an image and run a check to see a live result here.</div>
+
+          <div id="resultCard" class="result-card" aria-live="polite">
+            <div class="result-verdict" id="verdictBlock">
+              <div>
+                <div class="label">Model result</div>
+                <div class="value" id="verdictValue">—</div>
+              </div>
+              <div class="conf" id="verdictConf">—</div>
+            </div>
+            <div class="prob-rows" id="probRows"></div>
+          </div>
+
+          <div id="resultError" class="result-error" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="pipeline">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">System Design</p>
+      <h2>How the system sees</h2>
+      <p class="section-sub">Every uploaded image passes through the same nine-stage pipeline, whether it's a training sample or a live request to <span class="mono">/predict</span>. Expand a stage for detail.</p>
+    </div>
+    <div class="flow" id="flow">
+      <!-- items injected by JS-free static markup below -->
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="explain">
+      <div>
+        <p class="eyebrow">Face Localization</p>
+        <h3>Why MTCNN?</h3>
+        <p>Before the classifier ever sees an image, the system needs to know where the face is. MTCNN (Multi-task Cascaded Convolutional Networks) locates faces and facial landmarks in a single pass, and is fast enough to run per-request in an API.</p>
+        <p>The current implementation, faithfully:</p>
+        <ol>
+          <li>Runs MTCNN on the uploaded image</li>
+          <li>If more than one face is detected, keeps the one with the largest bounding-box area</li>
+          <li>Expands that box by a 20% margin for context</li>
+          <li>Clips the box to the image bounds and crops it</li>
+          <li>Falls back to a plain resize if no face is found, rather than failing silently</li>
+        </ol>
+      </div>
+      <div class="diagram" aria-hidden="true">
+        <div class="dblock">Input Image</div><div class="darrow">↓</div>
+        <div class="dblock accent">MTCNN Detector</div><div class="darrow">↓</div>
+        <div class="dblock">Largest Face Selected</div><div class="darrow">↓</div>
+        <div class="dblock">+20% Margin, Clipped</div><div class="darrow">↓</div>
+        <div class="dblock accent">Cropped Face</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="explain">
+      <div class="diagram" aria-hidden="true" style="order:2">
+        <div class="dblock">224 × 224 RGB Crop</div><div class="darrow">↓</div>
+        <div class="dblock">ImageNet Normalization</div><div class="darrow">↓</div>
+        <div class="dblock accent">ResNet18 Backbone (pretrained)</div><div class="darrow">↓</div>
+        <div class="dblock">Linear(512) → ReLU → Dropout(0.5)</div><div class="darrow">↓</div>
+        <div class="dblock accent">Linear(3) → Softmax</div>
+      </div>
+      <div>
+        <p class="eyebrow">Classifier</p>
+        <h3>Why ResNet18?</h3>
+        <p>ResNet18 is pretrained on ImageNet, so it already encodes general-purpose visual features — edges, textures, shapes — before it ever sees a single face. That transfer-learning head start matters when the task-specific dataset is far smaller than ImageNet.</p>
+        <p>The classifier keeps the pretrained convolutional backbone and replaces only the final layer with a small custom head:</p>
+        <ul>
+          <li>512-unit linear layer with ReLU activation</li>
+          <li>Dropout (p = 0.5) for regularization</li>
+          <li>Final linear layer projecting to 3 output classes</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="training">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Training</p>
+      <h2>What the training run looks like</h2>
+      <p class="section-sub">These are the actual values used in <span class="mono">train.py</span> — nothing here is aspirational.</p>
+    </div>
+    <div class="explain">
+      <div class="spec-table">
+        <div class="spec-row"><div class="k">Batch size</div><div class="v">32</div></div>
+        <div class="spec-row"><div class="k">Epochs</div><div class="v">20</div></div>
+        <div class="spec-row"><div class="k">Learning rate</div><div class="v">0.001</div></div>
+        <div class="spec-row"><div class="k">Optimizer</div><div class="v">Adam</div></div>
+        <div class="spec-row"><div class="k">Loss</div><div class="v">Cross-entropy, class-weighted by inverse frequency</div></div>
+        <div class="spec-row"><div class="k">Augmentation</div><div class="v">Random horizontal flip, ±10° rotation, brightness/contrast jitter</div></div>
+        <div class="spec-row"><div class="k">Checkpoint</div><div class="v">Saved whenever validation loss improves</div></div>
+      </div>
+      <div class="diagram" aria-hidden="true">
+        <div class="dblock">Train Epoch</div><div class="darrow">↓</div>
+        <div class="dblock">Validate</div><div class="darrow">↓</div>
+        <div class="dblock">Compare Val Loss</div><div class="darrow">↓</div>
+        <div class="dblock accent">Save Best Model</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="data">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Data Pipeline</p>
+      <h2>Where the training data comes from</h2>
+      <p class="section-sub">Three source datasets are consolidated into the three target classes, then split reproducibly.</p>
+    </div>
+    <div class="data-flow" role="list">
+      <span class="db">Face Mask 12K</span><span class="arrow">→</span><span class="db">masked / real</span>
+    </div>
+    <div class="data-flow">
+      <span class="db">CelebA-Spoof</span><span class="arrow">→</span><span class="db">real / spoof</span>
+    </div>
+    <div class="data-flow">
+      <span class="db">Anti-Spoofing Dataset</span><span class="arrow">→</span><span class="db">real / spoof</span>
+    </div>
+    <p class="section-sub" style="margin-top:24px">Each class is then shuffled with a fixed random seed and split:</p>
+    <div class="split-bar" role="img" aria-label="70 percent train, 15 percent validation, 15 percent test">
+      <div class="tr">70% TRAIN</div><div class="va">15% VAL</div><div class="te">15% TEST</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="evaluation">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Evaluation</p>
+      <h2>How good is the model?</h2>
+      <p class="section-sub">Honestly: unknown until you train it. This repository ships the evaluation code, not invented numbers.</p>
+    </div>
+    <div class="eval-empty">
+      No verified evaluation results are bundled with this project — accuracy depends on the raw datasets you provide locally.
+      <span class="mono">Run `python evaluate.py` after training to generate a real classification report and confusion matrix in /results.</span>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Context</p>
+    <h2 style="margin-top:12px">Why spoof detection matters</h2>
+    <p class="callout" style="margin-top:20px">Face-based authentication that only checks "does this face match?" can be defeated by a printed photo or a screen held up to the camera — a class of attack known as a presentation attack. Treating real/spoof/masked as an explicit classification problem gives a downstream system a way to distinguish a live person from a reproduction, rather than trusting every visual match equally.</p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="limitations">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Read This First</p>
+      <h2>Limitations</h2>
+    </div>
+    <ul class="limit-list">
+      <li><b>①</b>Accuracy depends entirely on the training data supplied — none is bundled with this repository.</li>
+      <li><b>②</b>Lighting, image quality, and camera angle all affect real-world results.</li>
+      <li><b>③</b>Unseen spoofing techniques may not be reliably detected — the model only knows what its training data showed it.</li>
+      <li><b>④</b>Multiple simultaneous faces in one image are not supported — only the largest detected face is used.</li>
+      <li><b>⑤</b>This is a research/portfolio implementation, not a certified production security system.</li>
+      <li><b>⑥</b>A confident prediction is not a liveness guarantee — it should not be the sole gate for a security-critical decision.</li>
+    </ul>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section class="section" id="api">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Technical Architecture</p>
+      <h2>Frontend to prediction, end to end</h2>
+    </div>
+    <div class="explain">
+      <div class="diagram" aria-hidden="true">
+        <div class="dblock">Frontend</div><div class="darrow">↓</div>
+        <div class="dblock accent">FastAPI</div><div class="darrow">↓</div>
+        <div class="dblock">Image Validation</div><div class="darrow">↓</div>
+        <div class="dblock">MTCNN → Face Crop</div><div class="darrow">↓</div>
+        <div class="dblock accent">ResNet18 → Softmax</div><div class="darrow">↓</div>
+        <div class="dblock">JSON Response</div>
+      </div>
+      <div>
+        <p class="eyebrow">Endpoints</p>
+        <h3>Two routes, one model</h3>
+        <p><span class="mono" style="color:var(--cyan)">POST /predict</span> — accepts an image file, runs detection + classification, returns the predicted class and per-class probabilities.</p>
+        <p><span class="mono" style="color:var(--cyan)">GET /health</span> — reports whether the model is loaded, which device it's running on, and the resolved class order.</p>
+        <div style="margin-top:20px">
+          <span class="example-badge">Example request</span>
+          <div class="code-block"><span class="c1">$</span> curl -X POST <span class="c2">http://localhost:8000/predict</span> \
+  -F <span class="c2">"file=@image.jpg"</span></div>
+        </div>
+        <div style="margin-top:16px">
+          <span class="example-badge">Example response shape</span>
+          <div class="code-block">{
+  <span class="c2">"prediction"</span>: <span class="c1">"real"</span>,
+  <span class="c2">"confidence"</span>: <span class="c1">0.9123</span>,
+  <span class="c2">"all_probabilities"</span>: {
+    <span class="c2">"masked"</span>: <span class="c1">0.0244</span>,
+    <span class="c2">"real"</span>: <span class="c1">0.9123</span>,
+    <span class="c2">"spoof"</span>: <span class="c1">0.0633</span>
+  }
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Sentinel Vision — MTCNN + ResNet18 face classification case study</span>
+    <span>Portfolio / research project — not a certified security system</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Hero stage cycler ---------- */
+  var stages = ["IMAGE RECEIVED","FACE DETECTED","FACE CROPPED","MODEL ANALYSIS","CLASSIFICATION"];
+  var confs = ["—","0.94","0.94","0.91","0.91"];
+  var heroStage = document.getElementById('heroStage');
+  var heroConf = document.getElementById('heroConfidence');
+  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!prefersReduced){
+    var si = 1;
+    setInterval(function(){
+      si = (si + 1) % stages.length;
+      heroStage.textContent = stages[si];
+      heroConf.textContent = 'CONF ' + confs[si];
+    }, 2600);
+  }
+
+  /* ---------- Flow accordion (static content, built here to keep markup shorter) ---------- */
+  var flowData = [
+    ["Input Image","The raw file the user uploads or the training pipeline reads from disk — any size, any aspect ratio."],
+    ["MTCNN","Runs face + landmark detection on the full image."],
+    ["Face Detection","All candidate face boxes from MTCNN are considered; the one with the largest area is kept."],
+    ["Face Crop","The kept box is expanded by a 20% margin, clipped to image bounds, and cropped out."],
+    ["224 × 224","The crop is resized to the fixed input size the classifier expects."],
+    ["Normalization","Pixel values are scaled and normalized using ImageNet mean/std statistics."],
+    ["ResNet18","The normalized tensor passes through the pretrained backbone and custom 3-class head."],
+    ["Class Probabilities","A softmax turns the three raw outputs into probabilities that sum to 1."],
+    ["Final Class","The highest-probability class is returned as the prediction, alongside all three probabilities."]
+  ];
+  var flow = document.getElementById('flow');
+  flowData.forEach(function(item, i){
+    var wrap = document.createElement('div');
+    wrap.className = 'flow-item';
+    wrap.innerHTML =
+      '<button class="flow-btn" aria-expanded="false">' +
+        '<span><span class="fnum">' + String(i+1).padStart(2,'0') + '</span>' + item[0] + '</span>' +
+        '<span class="chev" aria-hidden="true">+</span>' +
+      '</button>' +
+      '<div class="flow-panel"><p>' + item[1] + '</p></div>';
+    flow.appendChild(wrap);
+    var btn = wrap.querySelector('.flow-btn');
+    btn.addEventListener('click', function(){
+      var isOpen = wrap.classList.contains('open');
+      flow.querySelectorAll('.flow-item.open').forEach(function(el){
+        el.classList.remove('open');
+        el.querySelector('.flow-btn').setAttribute('aria-expanded','false');
+      });
+      if(!isOpen){
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded','true');
+      }
+    });
+  });
+
+  /* ---------- Demo: upload + predict ---------- */
+  var dropzone = document.getElementById('dropzone');
+  var fileInput = document.getElementById('fileInput');
+  var runBtn = document.getElementById('runBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var apiBaseInput = document.getElementById('apiBase');
+  var resultEmpty = document.getElementById('resultEmpty');
+  var resultCard = document.getElementById('resultCard');
+  var resultError = document.getElementById('resultError');
+  var verdictBlock = document.getElementById('verdictBlock');
+  var verdictValue = document.getElementById('verdictValue');
+  var verdictConf = document.getElementById('verdictConf');
+  var probRows = document.getElementById('probRows');
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.pstep'));
+  var currentFile = null;
+  var dzDefaultHTML = dropzone.innerHTML;
+
+  function openPicker(){ fileInput.click(); }
+  dropzone.addEventListener('click', openPicker);
+  dropzone.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openPicker(); }
+  });
+  ['dragenter','dragover'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', function(e){
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) setFile(f);
+  });
+  fileInput.addEventListener('change', function(e){
+    var f = e.target.files && e.target.files[0];
+    if(f) setFile(f);
+  });
+
+  function setFile(f){
+    if(!f.type || !f.type.startsWith('image/')) return;
+    currentFile = f;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      dropzone.innerHTML = '<img src="' + e.target.result + '" alt="Preview of the uploaded image">' +
+        '<span class="dz-sub">' + f.name + ' — click to replace</span>';
+    };
+    reader.readAsDataURL(f);
+    runBtn.disabled = false;
+    clearResult();
+  }
+
+  function clearResult(){
+    resultCard.classList.remove('show');
+    resultError.style.display = 'none';
+    resultEmpty.style.display = 'block';
+    steps.forEach(function(s){ s.classList.remove('active','done'); });
+  }
+
+  resetBtn.addEventListener('click', function(){
+    currentFile = null;
+    fileInput.value = '';
+    dropzone.innerHTML = dzDefaultHTML;
+    runBtn.disabled = true;
+    clearResult();
+  });
+
+  function setStep(i, state){
+    steps.forEach(function(s){
+      var n = parseInt(s.getAttribute('data-step'), 10);
+      if(n < i) s.classList.add('done'), s.classList.remove('active');
+      else if(n === i) { s.classList.add(state); s.classList.remove(state === 'active' ? 'done' : 'active'); }
+      else { s.classList.remove('active','done'); }
+    });
+  }
+
+  function showError(message){
+    resultEmpty.style.display = 'none';
+    resultCard.classList.remove('show');
+    resultError.style.display = 'block';
+    resultError.textContent = message;
+  }
+
+  function showResult(data){
+    resultEmpty.style.display = 'none';
+    resultError.style.display = 'none';
+    resultCard.classList.add('show');
+
+    var prediction = data.prediction || 'unknown';
+    verdictBlock.className = 'result-verdict ' + prediction;
+    verdictValue.textContent = prediction.toUpperCase();
+    verdictConf.textContent = data.confidence != null ? (data.confidence * 100).toFixed(1) + '%' : '—';
+
+    probRows.innerHTML = '';
+    var probs = data.all_probabilities || {};
+    Object.keys(probs).forEach(function(key){
+      var pct = (probs[key] * 100);
+      var row = document.createElement('div');
+      row.className = 'prob-row';
+      row.innerHTML =
+        '<span class="plabel">' + key + '</span>' +
+        '<span class="prob-track"><span class="prob-fill ' + key + '" style="width:0%"></span></span>' +
+        '<span class="pval">' + pct.toFixed(1) + '%</span>';
+      probRows.appendChild(row);
+      var fill = row.querySelector('.prob-fill');
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){ fill.style.width = pct + '%'; });
+      });
+    });
+  }
+
+  runBtn.addEventListener('click', function(){
+    if(!currentFile) return;
+    var base = (apiBaseInput.value || '').trim().replace(/\/+$/,'');
+    if(!base){ showError('Enter an API base URL first.'); return; }
+
+    resultEmpty.style.display = 'none';
+    resultCard.classList.remove('show');
+    resultError.style.display = 'none';
+    runBtn.disabled = true;
+
+    setStep(0, 'active');
+    var t1 = setTimeout(function(){ setStep(1, 'active'); }, 250);
+    var t2 = setTimeout(function(){ setStep(2, 'active'); }, 550);
+    var t3 = setTimeout(function(){ setStep(3, 'active'); }, 850);
+
+    var formData = new FormData();
+    formData.append('file', currentFile);
+
+    fetch(base + '/predict', { method: 'POST', body: formData })
+      .then(function(res){
+        return res.json().then(function(body){ return { ok: res.ok, status: res.status, body: body }; });
+      })
+      .then(function(result){
+        clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+        setStep(4, 'active');
+        runBtn.disabled = false;
+        if(!result.ok){
+          var msg = (result.body && (result.body.detail || result.body.message)) || ('Request failed with status ' + result.status);
+          showError(msg);
+          return;
+        }
+        showResult(result.body);
+      })
+      .catch(function(err){
+        clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+        runBtn.disabled = false;
+        steps.forEach(function(s){ s.classList.remove('active','done'); });
+        showError('Could not reach the API at ' + base + '. Is uvicorn running? (' + err.message + ')');
+      });
+  });
+})();
+</script>
+</body>
+</html>
